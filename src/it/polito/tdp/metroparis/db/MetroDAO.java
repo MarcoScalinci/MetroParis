@@ -6,6 +6,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import com.javadocmd.simplelatlng.LatLng;
 
@@ -67,6 +68,81 @@ public class MetroDAO {
 
 		return linee;
 	}
+    /**
+     * PRIMA SOLUZIONE CON I GRAFI, NON CONSIGLIATA, SPESSO NON FUNZIONA
+     * @param partenza verice di partenza
+     * @param arrivo vertice di arrivo
+     * @return un valore numerico  che ci dice se esiste un collegamento tra i due vertici
+     *         
+     */
+    public boolean esisteConnessione(Fermata partenza, Fermata arrivo) {
+		
+    	final String sql = "SELECT COUNT(*) AS cnt " + 
+    			"FROM connessione " + 
+    			"WHERE id_stazP=? " + 
+    			"AND id_stazA=?";
+    	try{
+			Connection conn = DBConnect.getConnection();
+			PreparedStatement st = conn.prepareStatement(sql);
+			st.setInt(1, partenza.getIdFermata()); //impostiamo i parametri
+			st.setInt(2, arrivo.getIdFermata());
+			
+			ResultSet rs = st.executeQuery();
 
+		    rs.next(); // mi posiziono sulla prima (e unica) riga
+		    
+		    int numero = rs.getInt("cnt");
+
+//			st.close();
+			conn.close();
+//			se il numero è maggiore di zero esiste una connessione, altrimenti
+//			è uguale a zero e non esiste connessione, in questo caso ritorna "false"
+			return  (numero>0); 
+
+		} catch (SQLException e) {
+			e.printStackTrace();
+			
+		}
+        return false;
+	}
+
+    /**
+     *  SECONDA SOLUZIONE
+     * @param partenza
+     * @return
+     */
+	public List<Fermata> stazioniArrivo(Fermata partenza, Map<Integer, Fermata> idMap) {
+		
+		final String sql = "SELECT id_stazA " + 
+    			           "FROM connessione " + 
+    			           "WHERE id_stazP=?" ;
+		
+		Connection conn = DBConnect.getConnection();
+		try {
+				PreparedStatement st = conn.prepareStatement(sql);
+				st.setInt(1, partenza.getIdFermata());
+				ResultSet rs = st.executeQuery();
+				
+				List<Fermata> result = new ArrayList<>();
+
+				while(rs.next()) {
+//		PASSIAMO LA idMap E LA USIAMO PER RECUPERARE GLI OGGETTI DA AGGIUNGERE
+//		ALLA LISTA RESULT SENZA DOVER CREARE NUOVI OGGETTI
+//	-----> Grazie alla idMap creiamo gli oggetti una sola volta e pooi ad ogni metodo
+//		che debba usarli passiamo la identityMap come parametro
+					result.add(idMap.get(rs.getInt("id_stazA")));
+				}
+				
+				conn.close();
+				return result;
+				
+			} catch (SQLException e) {
+				
+				e.printStackTrace();
+			
+			}
+					
+		return null;
+	}
 
 }
